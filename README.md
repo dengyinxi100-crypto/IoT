@@ -1,1 +1,1 @@
-# IoT
+# IoT smart gateway

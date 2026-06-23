@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>银发智慧居家物联网网关 - 传感器监控</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #1a1a2e;
+            --text-secondary: #6b7280;
+            --accent: #4f46e5;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #22c55e;
+            --radius: 16px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .header {
+            text-align: center;
+            padding: 28px 20px 20px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border-radius: var(--radius);
+            color: #fff;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(79,70,229,0.25);
+        }
+        .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+        .header .subtitle { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+        .header .device-id {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 14px;
+            background: rgba(255,255,255,0.18);
+            border-radius: 20px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        .conn-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .conn-badge.ok { background: rgba(34,197,94,0.25); color: #bbf7d0; }
+        .conn-badge.fail { background: rgba(239,68,68,0.25); color: #fecaca; }
+        .conn-badge.wait { background: rgba(245,158,11,0.25); color: #fde68a; }
+
+        .status-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .status-chip {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+            border-left: 4px solid #d1d5db;
+        }
+        .status-chip .label { font-size: 11px; font-weight: 400; color: var(--text-secondary); }
+        .status-chip.ok { border-left-color: var(--success); }
+        .status-chip.warn { border-left-color: var(--warning); }
+        .status-chip.danger { border-left-color: var(--danger); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 500px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 18px 20px 20px;
+            box-shadow: var(--shadow);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .card-header .icon {
+            width: 40px; height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .icon.temp { background: #fee2e2; }
+        .icon.humi { background: #dbeafe; }
+        .icon.light { background: #fef9c3; }
+        .icon.gas { background: #f3e8ff; }
+        .card-header .info h3 { font-size: 14px; font-weight: 600; }
+        .card-header .info .unit { font-size: 11px; color: var(--text-secondary); }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+        .card-value .decimal { font-size: 22px; font-weight: 500; }
+        .card-desc { font-size: 12px; color: var(--text-secondary); min-height: 18px; }
+        .card-full { grid-column: 1 / -1; }
+
+        .level-bar { display: flex; gap: 6px; margin-top: 10px; }
+        .level-bar .seg {
+            flex: 1; height: 10px; border-radius: 5px;
+            background: #e5e7eb; transition: background 0.3s;
+        }
+        .level-bar .seg.on { background: var(--success); }
+        .level-bar .seg.on.l1 { background: #84cc16; }
+        .level-bar .seg.on.l2 { background: var(--warning); }
+        .level-bar .seg.on.l3 { background: #f97316; }
+        .level-bar .seg.on.l4 { background: var(--danger); }
+
+        .level-labels {
+            display: flex; justify-content: space-between;
+            font-size: 10px; color: var(--text-secondary); margin-top: 4px;
+        }
+
+        .log-area {
+            background: var(--card-bg); border-radius: var(--radius);
+            padding: 16px 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+        }
+        .log-area h3 { font-size: 14px; margin-bottom: 10px; }
+        .log-list {
+            max-height: 160px; overflow-y: auto;
+            font-size: 12px; font-family: 'Courier New', monospace;
+            color: var(--text-secondary);
+        }
+        .log-list::-webkit-scrollbar { width: 4px; }
+        .log-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+        .log-item {
+            padding: 4px 0; border-bottom: 1px solid #f3f4f6;
+            display: flex; gap: 8px;
+        }
+        .log-item .time { color: #9ca3af; white-space: nowrap; }
+        .log-item .tag {
+            padding: 0 6px; border-radius: 4px;
+            font-size: 10px; font-weight: 600; white-space: nowrap; line-height: 18px;
+        }
+        .log-item .tag.alarm { background: #fee2e2; color: var(--danger); }
+        .log-item .tag.info { background: #dbeafe; color: var(--accent); }
+        .log-item .tag.sos { background: #fce7f3; color: #db2777; }
+        .log-item .tag.err { background: #fef2f2; color: #b91c1c; }
+
+        .footer { text-align: center; padding: 16px; font-size: 12px; color: var(--text-secondary); }
+
+        /* Debug panel */
+        .debug {
+            background: #1e1e2e; color: #cdd6f4; border-radius: var(--radius);
+            padding: 14px 18px; font-size: 12px; font-family: 'Courier New', monospace;
+            margin-bottom: 16px; display: none;
+        }
+        .debug.show { display: block; }
+        .debug .line { padding: 2px 0; }
+        .debug .line.err { color: #f38ba8; }
+        .debug .line.ok { color: #a6e3a1; }
+        .debug .line.warn { color: #f9e2af; }
+
+        .btn {
+            display: inline-block; padding: 8px 20px; border: none; border-radius: 10px;
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-sm { padding: 4px 12px; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h1>🏠 银发智慧居家物联网网关</h1>
+        <div class="subtitle">银发场景 · 环境监控 · 智能守护</div>
+        <div>
+            <span class="device-id" id="deviceId">等待设备...</span>
+            <span class="conn-badge wait" id="connBadge">未连接</span>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.18);color:#fff;margin-left:6px;" onclick="toggleDebug()">🐛</button>
+        </div>
+    </div>
+
+    <!-- Debug Console -->
+    <div class="debug" id="debugPanel">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <b>🔧 调试控制台</b>
+            <button class="btn btn-sm" style="background:#45475a;color:#cdd6f4;" onclick="document.getElementById('debugLog').innerHTML=''">清空</button>
+        </div>
+        <div id="debugLog"></div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+        <div class="status-chip" id="statusMQTT"><div class="label">MQTT</div>连接中...</div>
+        <div class="status-chip" id="statusTemp"><div class="label">温度</div>--</div>
+        <div class="status-chip" id="statusGas"><div class="label">气体</div>--</div>
+        <div class="status-chip" id="statusDev"><div class="label">设备</div>离线</div>
+    </div>
+
+    <div class="grid">
+        <!-- Temperature -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon temp">🌡️</div>
+                <div class="info"><h3>温度</h3><div class="unit">Temperature</div></div>
+            </div>
+            <div class="card-value" id="tempValue">--<span class="decimal">.0°C</span></div>
+            <div class="card-desc" id="tempDesc">等待数据...</div>
+        </div>
+        <!-- Humidity -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon humi">💧</div>
+                <div class="info"><h3>湿度</h3><div class="unit">Humidity</div></div>
+            </div>
+            <div class="card-value" id="humiValue">--<span class="decimal">.0%</span></div>
+            <div class="card-desc" id="humiDesc">等待数据...</div>
+        </div>
+        <!-- Light -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon light">☀️</div>
+                <div class="info"><h3>光照强度</h3><div class="unit">Light Sensor</div></div>
+            </div>
+            <div class="card-value" id="lightValue">--</div>
+            <div class="card-desc" id="lightDesc">等待数据...</div>
+        </div>
+        <!-- Gas -->
+        <div class="card">
+            <div class="card-header">
+                <div class="icon gas">🔥</div>
+                <div class="info"><h3>可燃气体</h3><div class="unit">MQ-2 Sensor</div></div>
+            </div>
+            <div class="card-value" id="gasValue">--</div>
+            <div class="card-desc" id="gasDesc">等待数据...</div>
+            <div class="level-bar" id="gasLevelBar">
+                <div class="seg" data-i="0"></div>
+                <div class="seg" data-i="1"></div>
+                <div class="seg" data-i="2"></div>
+                <div class="seg" data-i="3"></div>
+                <div class="seg" data-i="4"></div>
+            </div>
+            <div class="level-labels"><span>正常</span><span>轻度</span><span>中度</span><span>重度</span><span>危险</span></div>
+        </div>
+        <!-- Raw Data -->
+        <div class="card card-full">
+            <div class="card-header">
+                <div class="icon" style="background:#e0e7ff;">📊</div>
+                <div class="info"><h3>原始数据</h3><div class="unit">Raw Data</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;">
+                <div><span style="color:var(--text-secondary)">光 ADC:</span> <span id="rawLightADC">--</span></div>
+                <div><span style="color:var(--text-secondary)">光 DO:</span> <span id="rawLightDO">--</span></div>
+                <div><span style="color:var(--text-secondary)">气 ADC:</span> <span id="rawGasADC">--</span></div>
+                <div><span style="color:var(--text-secondary)">气 DO:</span> <span id="rawGasDO">--</span></div>
+                <div><span style="color:var(--text-secondary)">气等级:</span> <span id="rawGasLevel">--</span></div>
+                <div><span style="color:var(--text-secondary)">状态:</span> <span id="rawStatus">--</span></div>
+            </div>
+        </div>
+        <!-- Test data btn -->
+        <div class="card card-full" style="text-align:center;padding:14px;">
+            <button class="btn btn-primary" onclick="loadTestData()">📥 加载测试数据（无设备时用）</button>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">设备数据会自动刷新，点击此按钮可查看界面效果</div>
+        </div>
+    </div>
+
+    <div class="log-area">
+        <h3>📋 事件日志</h3>
+        <div class="log-list" id="logList">等待设备数据...</div>
+    </div>
+
+    <div class="footer">
+        MQTT · broker.emqx.io · Topic: student_iot_evt
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ===== MQTT Config (try both WebSocket URLs) =====
+    const MQTT_CONFIGS = [
+        { url: 'wss://broker.emqx.io:8084/mqtt', label: 'WSS 8084' },
+        { url: 'ws://broker.emqx.io:8083/mqtt',  label: 'WS 8083'  },
+    ];
+    const MQTT_TOPIC = 'student_iot_evt';
+
+    // ===== DOM helpers =====
+    const $ = id => document.getElementById(id);
+    const debugLog = $('debugLog');
+    const logList  = $('logList');
+
+    function debug(msg, type = '') {
+        const line = document.createElement('div');
+        line.className = 'line' + (type ? ' ' + type : '');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        debugLog.appendChild(line);
+        console.log(msg);
+    }
+
+    function addLog(tag, msg, cls = 'info') {
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `<span class="time">${new Date().toLocaleTimeString()}</span><span class="tag ${cls}">${tag}</span> ${msg}`;
+        logList.insertBefore(item, logList.firstChild);
+        while (logList.children.length > 100) logList.removeChild(logList.lastChild);
+    }
+
+    function setBadge(el, text, ok) {
+        el.textContent = text;
+        el.className = 'conn-badge ' + (ok === true ? 'ok' : ok === false ? 'fail' : 'wait');
+    }
+
+    // ===== Test Data =====
+    window.loadTestData = function() {
+        const data = {
+            device_id: "ESP32S3_SeniorHome_001",
+            timestamp: Math.floor(Date.now() / 1000),
+            temperature: 26.3,
+            humidity: 55.8,
+            light_adc: 1800,
+            light_digital: 1,
+            gas_adc: 350,
+            gas_digital: 0,
+            gas_level: 0,
+            status: "normal"
+        };
+        updateUI(data);
+        addLog('测试', '已载入测试数据：T=26.3°C H=55.8% 光=1800 气=350', 'info');
+        debug('✅ 测试数据已加载到界面', 'ok');
+    };
+
+    // ===== MQTT Connection =====
+    let client = null;
+    let connAttempt = 0;
+    let lastDataTime = 0;
+
+    function updateDevStatus() {
+        const el = $('statusDev');
+        const now = Date.now();
+        if (lastDataTime && (now - lastDataTime) < 20000) {
+            el.className = 'status-chip ok';
+            el.innerHTML = '<div class="label">设备</div>在线';
+        } else if (lastDataTime) {
+            el.className = 'status-chip warn';
+            el.innerHTML = '<div class="label">设备</div>' + Math.floor((now - lastDataTime)/1000) + 's前';
+        }
+    }
+    setInterval(updateDevStatus, 3000);
+
+    function connectMQTT(idx) {
+        if (idx === undefined) idx = 0;
+        if (idx >= MQTT_CONFIGS.length) {
+            debug('⚠️ 所有 MQTT 连接方式均失败', 'warn');
+            setBadge($('connBadge'), '连接失败', false);
+            $('statusMQTT').className = 'status-chip danger';
+            $('statusMQTT').innerHTML = '<div class="label">MQTT</div>失败';
+            addLog('错误', '无法连接到 MQTT Broker，请在控制台查看详情', 'err');
+            return;
+        }
+
+        const cfg = MQTT_CONFIGS[idx];
+        connAttempt++;
+        debug(`🔄 尝试 MQTT 连接 #${connAttempt}: ${cfg.url}`);
+        setBadge($('connBadge'), `连接中(${idx+1}/${MQTT_CONFIGS.length})...`, null);
+        $('statusMQTT').className = 'status-chip warn';
+        $('statusMQTT').innerHTML = '<div class="label">MQTT</div>连接中';
+
+        try {
+            if (client) {
+                try { client.end(true); } catch(e) {}
+                client = null;
+            }
+
+            client = mqtt.connect(cfg.url, {
+                clientId: 'web_dash_' + Math.random().toString(16).slice(2, 10),
+                clean: true,
+                connectTimeout: 8000,
+                keepalive: 30,
+                reconnectPeriod: 0, // manual reconnect
+            });
+
+            client.on('connect', () => {
+                debug(`✅ MQTT 连接成功! (${cfg.label})`, 'ok');
+                setBadge($('connBadge'), '已连接', true);
+                $('statusMQTT').className = 'status-chip ok';
+                $('statusMQTT').innerHTML = '<div class="label">MQTT</div>已连接';
+                addLog('MQTT', `已连接到 ${cfg.url}`, 'info');
+
+                client.subscribe(MQTT_TOPIC, { qos: 0 }, (err) => {
+                    if (err) {
+                        debug(`❌ 订阅失败: ${err.message}`, 'err');
+                        addLog('错误', '订阅主题失败', 'err');
+                    } else {
+                        debug(`📡 已订阅主题: ${MQTT_TOPIC}`, 'ok');
+                        addLog('MQTT', `已订阅 ${MQTT_TOPIC}`, 'info');
+                    }
+                });
+            });
+
+            client.on('message', (topic, payload) => {
+                try {
+                    const json = JSON.parse(payload.toString());
+                    debug(`📩 收到数据: ${JSON.stringify(json).slice(0,100)}...`, 'ok');
+                    lastDataTime = Date.now();
+                    updateUI(json);
+                } catch (e) {
+                    debug(`❌ JSON 解析错误: ${e.message}`, 'err');
+                }
+            });
+
+            client.on('error', (err) => {
+                debug(`❌ 连接错误: ${err.message || err}`, 'err');
+                if (client) { try { client.end(true); } catch(e) {} client = null; }
+                // Try next config
+                setTimeout(() => connectMQTT(idx + 1), 1500);
+            });
+
+            client.on('close', () => {
+                debug('⚠️ MQTT 连接关闭', 'warn');
+                client = null;
+                setBadge($('connBadge'), '断连', false);
+                $('statusMQTT').className = 'status-chip danger';
+                $('statusMQTT').innerHTML = '<div class="label">MQTT</div>断开';
+                // Retry after delay
+                setTimeout(() => connectMQTT(0), 5000);
+            });
+        } catch(e) {
+            debug(`❌ 初始化异常: ${e.message}`, 'err');
+            setTimeout(() => connectMQTT(idx + 1), 1500);
+        }
+    }
+
+    // ===== UI Update =====
+    function updateUI(d) {
+        // Device ID
+        if (d.device_id) {
+            $('deviceId').textContent = d.device_id;
+            $('deviceId').parentNode.style.display = 'block';
+        }
+
+        // Temperature
+        if (d.temperature !== undefined && d.temperature !== null) {
+            const t = parseFloat(d.temperature);
+            if (t > -50) {
+                $('tempValue').innerHTML = `${t.toFixed(1)}<span class="decimal">°C</span>`;
+                if (t > 35) {
+                    $('tempDesc').textContent = '⚠️ 高温告警！';
+                    $('tempDesc').style.color = 'var(--danger)';
+                    $('statusTemp').className = 'status-chip danger';
+                    $('statusTemp').innerHTML = '<div class="label">温度</div>🔥高温';
+                } else if (t > 28) {
+                    $('tempDesc').textContent = '🌤️ 温度偏高';
+                    $('tempDesc').style.color = 'var(--warning)';
+                    $('statusTemp').className = 'status-chip warn';
+                } else if (t > 18) {
+                    $('tempDesc').textContent = '✅ 舒适';
+                    $('tempDesc').style.color = 'var(--success)';
+                    $('statusTemp').className = 'status-chip ok';
+                    $('statusTemp').innerHTML = '<div class="label">温度</div>舒适';
+                } else {
+                    $('tempDesc').textContent = '❄️ 偏低';
+                    $('tempDesc').style.color = 'var(--accent)';
+                    $('statusTemp').className = 'status-chip warn';
+                }
+            }
+        }
+
+        // Humidity
+        if (d.humidity !== undefined && d.humidity !== null) {
+            const h = parseFloat(d.humidity);
+            if (h >= 0) {
+                $('humiValue').innerHTML = `${h.toFixed(1)}<span class="decimal">%</span>`;
+                if (h < 30) {
+                    $('humiDesc').textContent = '⚠️ 湿度过低';
+                    $('humiDesc').style.color = 'var(--danger)';
+                } else if (h > 70) {
+                    $('humiDesc').textContent = '💧 湿度过高';
+                    $('humiDesc').style.color = 'var(--warning)';
+                } else {
+                    $('humiDesc').textContent = '✅ 湿度适宜';
+                    $('humiDesc').style.color = 'var(--success)';
+                }
+            }
+        }
+
+        // Light
+        if (d.light_adc !== undefined && d.light_adc !== null) {
+            $('rawLightADC').textContent = d.light_adc;
+            if (d.light_adc >= 0) {
+                $('lightValue').textContent = d.light_adc;
+                if (d.light_adc < 500) {
+                    $('lightDesc').textContent = '🌙 很暗';
+                    $('lightDesc').style.color = 'var(--warning)';
+                } else if (d.light_adc < 1500) {
+                    $('lightDesc').textContent = '🌆 较暗';
+                    $('lightDesc').style.color = 'var(--warning)';
+                } else if (d.light_adc < 3000) {
+                    $('lightDesc').textContent = '☀️ 适中';
+                    $('lightDesc').style.color = 'var(--success)';
+                } else {
+                    $('lightDesc').textContent = '☀️ 充足';
+                    $('lightDesc').style.color = 'var(--accent)';
+                }
+            }
+        }
+        if (d.light_digital !== undefined) $('rawLightDO').textContent = d.light_digital;
+
+        // Gas
+        if (d.gas_adc !== undefined && d.gas_adc !== null) {
+            $('rawGasADC').textContent = d.gas_adc;
+            if (d.gas_adc >= 0) {
+                $('gasValue').textContent = d.gas_adc;
+                const lv = d.gas_level !== undefined ? d.gas_level : 0;
+                const names = ['正常', '轻度', '中度', '重度', '危险'];
+                $('rawGasLevel').textContent = `${lv} (${names[lv]})`;
+
+                const segs = document.querySelectorAll('#gasLevelBar .seg');
+                segs.forEach((seg, i) => {
+                    seg.className = 'seg' + (i <= lv ? ' on l' + lv : '');
+                });
+
+                const descs = ['✅ 正常', '⚡ 轻度', '⚠️ 中度', '🚨 重度', '💀 危险'];
+                $('gasDesc').textContent = descs[lv] || '✅ 正常';
+                $('gasDesc').style.color = ['var(--success)','#84cc16','var(--warning)','#f97316','var(--danger)'][lv] || 'var(--success)';
+
+                if (lv >= 2) {
+                    $('statusGas').className = 'status-chip danger';
+                    $('statusGas').innerHTML = '<div class="label">气体</div>🚨 危险';
+                } else if (lv === 1) {
+                    $('statusGas').className = 'status-chip warn';
+                    $('statusGas').innerHTML = '<div class="label">气体</div>⚡ 异常';
+                } else {
+                    $('statusGas').className = 'status-chip ok';
+                    $('statusGas').innerHTML = '<div class="label">气体</div>正常';
+                }
+            }
+        }
+        if (d.gas_digital !== undefined) $('rawGasDO').textContent = d.gas_digital;
+
+        // Status
+        if (d.status) {
+            $('rawStatus').textContent = d.status;
+        }
+
+        // Log periodic
+        if (!window._lastLog || Date.now() - window._lastLog > 15000) {
+            window._lastLog = Date.now();
+            const t = d.temperature !== undefined ? d.temperature.toFixed(1) : '--';
+            const h = d.humidity !== undefined ? d.humidity.toFixed(1) : '--';
+            addLog('数据', `T=${t}°C H=${h}% 光=${d.light_adc} 气=${d.gas_adc} 状态=${d.status||'--'}`, 'info');
+        }
+    }
+
+    // ===== Debug toggle =====
+    window.toggleDebug = function() {
+        $('debugPanel').classList.toggle('show');
+    };
+
+    // ===== Init =====
+    // Set status chip labels
+    document.querySelectorAll('.status-chip').forEach(el => {
+        const lb = el.querySelector('.label');
+        if (lb) el.dataset.label = lb.textContent;
+    });
+
+    debug('🚀 面板启动，加载 MQTT.js...');
+    addLog('系统', '面板已启动，正在连接 MQTT...', 'info');
+
+    // Load MQTT library dynamically
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js';
+    script.onload = () => {
+        debug('✅ MQTT.js 加载成功', 'ok');
+        addLog('系统', 'MQTT 库已加载，开始连接...', 'info');
+        setTimeout(() => connectMQTT(0), 500);
+    };
+    script.onerror = () => {
+        debug('❌ MQTT.js CDN 加载失败，使用备用 CDN', 'err');
+        // Try alternate CDN
+        const alt = document.createElement('script');
+        alt.src = 'https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js';
+        alt.onload = () => {
+            debug('✅ 备用 CDN 加载成功', 'ok');
+            setTimeout(() => connectMQTT(0), 500);
+        };
+        alt.onerror = () => {
+            debug('❌ 所有 CDN 均加载失败！请检查网络', 'err');
+            addLog('错误', '无法加载 MQTT 库，请检查网络连接或刷新重试', 'err');
+            $('statusMQTT').className = 'status-chip danger';
+            $('statusMQTT').innerHTML = '<div class="label">MQTT</div>库加载失败';
+        };
+        document.head.appendChild(alt);
+    };
+    document.head.appendChild(script);
+})();
+</script>
+</body>
+</html>

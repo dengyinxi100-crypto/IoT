@@ -1,0 +1,16 @@
+# ESP-IDF build output
+build/
+
+# Clangd cache
+.cache/
+
+# IDE
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
+.DS_Store

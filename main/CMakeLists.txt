@@ -1,0 +1,24 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "driver_aht20.c"
+        "driver_light_sensor.c"
+        "driver_rgb_led.c"
+        "driver_mq2.c"
+        "driver_radar.c"
+        "bsp.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        esp_netif
+        esp_event
+        driver
+        freertos
+        log
+        esp_adc
+        esp_http_server
+        mbedtls
+        lwip
+)

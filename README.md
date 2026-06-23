@@ -1,5 +1,4 @@
-# IoT smart gateway
-# 银发智慧居家物联网网关
+# IoT smart gateway   银发智慧居家物联网网关
 
 基于 **ESP32-S3 + ESP-IDF v5.1.6** 的智能家居网关系统，面向银发居家场景，提供环境监测、智能照明、燃气告警、SOS 紧急求助等功能。
 
